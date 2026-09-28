@@ -1,0 +1,17 @@
+name = "limitless-codex"
+main = "limitless-codex.js"
+compatibility_date = "2026-09-01"
+workers_dev = false # no public URL; cron only (set true to use the manual /check endpoint)
+
+[triggers]
+crons = ["* * * * *"] # every minute (CF minimum)
+
+[[kv_namespaces]]
+binding = "TOKENS"
+id = "REPLACE_WITH_KV_ID" # wrangler kv namespace create TOKENS
+
+[observability]
+enabled = true
+
+# Secrets (wrangler secret put <NAME>): CODEX_ACCESS_TOKEN, CODEX_REFRESH_TOKEN,
+# CODEX_ACCOUNT_ID, optional CHECK_TOKEN. Optional var: THRESHOLD (default 99.8).
