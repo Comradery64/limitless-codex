@@ -1,0 +1,15 @@
+bin/
+dist/
+*.o
+*.a
+*.so
+.DS_Store
+.env
+.env.local
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.iml
+.limitless-codex/
