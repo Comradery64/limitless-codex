@@ -2,6 +2,8 @@
 
 Prevents Codex agent downtime by automatically resetting your rate limit before you hit the threshold.
 
+> **For Claude Code sessions:** Read [NEXT-SESSION.md](NEXT-SESSION.md) for project status and [TODO.md](TODO.md) for remaining work.
+
 ## Problem
 
 When you hit your Codex weekly rate limit, **all agents pause immediately**. If you're running 100+ agents, this is unacceptable.
