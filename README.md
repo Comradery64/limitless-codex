@@ -36,15 +36,6 @@ make build
 make install
 ```
 
-### Docker
-
-```bash
-docker run -d \
-  --name limitless-codex \
-  --restart unless-stopped \
-  -v ~/.codex:/root/.codex \
-  ghcr.io/limitless-codex/limitless-codex
-```
 
 ## Usage
 
