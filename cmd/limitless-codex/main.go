@@ -3,11 +3,14 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -220,19 +223,114 @@ func (c *CodexClient) Close() {
 	c.cmd.Wait()
 }
 
+var globalClient *CodexClient
+var globalMutex sync.Mutex
+
+type CheckResponse struct {
+	Status     string `json:"status"`
+	UsedPercent int    `json:"usedPercent"`
+	ResetsIn   int    `json:"resetsInMin"`
+	Credits    int    `json:"availableCredits"`
+	ResetDone  bool   `json:"resetTriggered,omitempty"`
+	Error      string `json:"error,omitempty"`
+	Timestamp  string `json:"timestamp"`
+}
+
+func handleCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost && r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(CheckResponse{Status: "error", Error: "method not allowed", Timestamp: time.Now().Format(time.RFC3339)})
+		return
+	}
+
+	globalMutex.Lock()
+	defer globalMutex.Unlock()
+
+	usage, err := globalClient.CheckUsage()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(CheckResponse{Status: "error", Error: err.Error(), Timestamp: time.Now().Format(time.RFC3339)})
+		return
+	}
+
+	if usage.RateLimits == nil || usage.RateLimits.Primary == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(CheckResponse{Status: "error", Error: "no rate limit data", Timestamp: time.Now().Format(time.RFC3339)})
+		return
+	}
+
+	usedPercent := usage.RateLimits.Primary.UsedPercent
+	resetsAt := time.Unix(usage.RateLimits.Primary.ResetsAt, 0)
+	resetsIn := int(time.Until(resetsAt).Minutes())
+	creditsAvailable := 0
+	if usage.RateLimitResetCredits != nil {
+		creditsAvailable = len(usage.RateLimitResetCredits.Credits)
+	}
+
+	resp := CheckResponse{
+		Status:      "ok",
+		UsedPercent: usedPercent,
+		ResetsIn:    resetsIn,
+		Credits:     creditsAvailable,
+		Timestamp:   time.Now().Format(time.RFC3339),
+	}
+
+	// Trigger reset if threshold reached
+	if float64(usedPercent) >= thresholdPercent && creditsAvailable > 0 {
+		creditToUse := usage.RateLimitResetCredits.Credits[0]
+		outcome, err := globalClient.TriggerReset(creditToUse.ID)
+		if err != nil {
+			resp.Status = "reset_failed"
+			resp.Error = err.Error()
+			fmt.Printf("[%s] ❌ Reset failed: %v\n", time.Now().Format(time.RFC3339), err)
+		} else {
+			resp.Status = "reset_triggered"
+			resp.ResetDone = true
+			fmt.Printf("[%s] ✅ Reset triggered via HTTP: %s\n", time.Now().Format(time.RFC3339), outcome)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
+}
+
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "healthy", "timestamp": time.Now().Format(time.RFC3339)})
+}
+
 func main() {
-	client, err := NewCodexClient()
+	mode := flag.String("mode", "daemon", "daemon or http")
+	listen := flag.String("listen", "127.0.0.1:8080", "HTTP listen address (http mode only)")
+	flag.Parse()
+
+	var err error
+	globalClient, err = NewCodexClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create Codex client: %v\n", err)
 		os.Exit(1)
 	}
-	defer client.Close()
+	defer globalClient.Close()
 
-	if err := client.Initialize(); err != nil {
+	if err := globalClient.Initialize(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize: %v\n", err)
 		os.Exit(1)
 	}
 
+	if *mode == "http" {
+		fmt.Printf("[%s] HTTP API mode, listening on %s\n", time.Now().Format(time.RFC3339), *listen)
+		http.HandleFunc("/health", handleHealth)
+		http.HandleFunc("/check-and-reset", handleCheck)
+		if err := http.ListenAndServe(*listen, nil); err != nil {
+			fmt.Fprintf(os.Stderr, "HTTP server error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Daemon mode
 	fmt.Printf("[%s] Codex Auto-Reset Monitor started (threshold: %.1f%%, polling every %dms)\n",
 		time.Now().Format(time.RFC3339), thresholdPercent, pollIntervalMs)
 
@@ -251,7 +349,7 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
-			usage, err := client.CheckUsage()
+			usage, err := globalClient.CheckUsage()
 			if err != nil {
 				consecutiveErrors++
 				fmt.Printf("[%s] ❌ Error: %v (%d/%d)\n", time.Now().Format(time.RFC3339), err, consecutiveErrors, maxConsecutiveErrors)
@@ -301,7 +399,7 @@ func main() {
 					creditToUse := usage.RateLimitResetCredits.Credits[0]
 					fmt.Printf("[%s] 🔄 Triggering reset...\n", timestamp)
 
-					outcome, err := client.TriggerReset(creditToUse.ID)
+					outcome, err := globalClient.TriggerReset(creditToUse.ID)
 					if err != nil {
 						fmt.Printf("[%s] ❌ Reset failed: %v\n", timestamp, err)
 					} else {
