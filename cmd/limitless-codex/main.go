@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"syscall"
@@ -40,10 +41,31 @@ func getCodexBin() string {
 }
 
 // notify shows a macOS notification; a no-op where osascript is missing.
+// notify posts a notification through the macOS app this binary ships inside;
+// a no-op when run outside the app bundle.
 func notify(msg string) {
-	exec.Command("osascript", "-e", "on run argv", "-e",
-		`display notification (item 1 of argv) with title "limitless-codex" sound name "Glass"`,
-		"-e", "end run", msg).Run()
+	if app := siblingApp(); app != "" {
+		cmd := exec.Command(filepath.Join(app, "Contents", "MacOS", "LimitlessCodex"), "--notify", msg)
+		if cmd.Start() == nil {
+			go cmd.Wait()
+		}
+	}
+}
+
+// siblingApp returns the .app bundle containing this binary, or "".
+func siblingApp() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	if exe, err = filepath.EvalSymlinks(exe); err != nil {
+		return ""
+	}
+	app := filepath.Dir(filepath.Dir(filepath.Dir(exe))) // <app>/Contents/MacOS/<exe>
+	if filepath.Ext(app) != ".app" {
+		return ""
+	}
+	return app
 }
 
 func abs(x int) int {
@@ -319,7 +341,20 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	mode := flag.String("mode", "daemon", "daemon or http")
+	if len(os.Args) > 1 && os.Args[1] == "setup" {
+		app := siblingApp()
+		if app == "" {
+			fmt.Fprintln(os.Stderr, "setup needs the macOS app: install with Homebrew or `make app`")
+			os.Exit(1)
+		}
+		if err := exec.Command("open", app).Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to open %s: %v\n", app, err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	mode := flag.String("mode", "daemon", "daemon, http, or status (print usage as JSON once)")
 	listen := flag.String("listen", "127.0.0.1:8080", "HTTP listen address (http mode only)")
 	flag.Parse()
 
@@ -334,6 +369,25 @@ func main() {
 	if err := globalClient.Initialize(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize: %v\n", err)
 		os.Exit(1)
+	}
+
+	if *mode == "status" {
+		usage, err := globalClient.CheckUsage()
+		if err != nil || usage.RateLimits == nil || usage.RateLimits.Primary == nil {
+			fmt.Fprintf(os.Stderr, "Failed to read usage: %v\n", err)
+			os.Exit(1)
+		}
+		credits := 0
+		if usage.RateLimitResetCredits != nil {
+			credits = len(usage.RateLimitResetCredits.Credits)
+		}
+		json.NewEncoder(os.Stdout).Encode(map[string]any{
+			"usedPercent": usage.RateLimits.Primary.UsedPercent,
+			"resetsInMin": int(time.Until(time.Unix(usage.RateLimits.Primary.ResetsAt, 0)).Minutes()),
+			"credits":     credits,
+			"threshold":   thresholdPercent,
+		})
+		return
 	}
 
 	if *mode == "http" {
