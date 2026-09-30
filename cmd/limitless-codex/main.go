@@ -39,6 +39,13 @@ func getCodexBin() string {
 	return homeDir + "/.local/bin/codex"
 }
 
+// notify shows a macOS notification; a no-op where osascript is missing.
+func notify(msg string) {
+	exec.Command("osascript", "-e", "on run argv", "-e",
+		`display notification (item 1 of argv) with title "limitless-codex" sound name "Glass"`,
+		"-e", "end run", msg).Run()
+}
+
 func abs(x int) int {
 	if x < 0 {
 		return -x
@@ -345,6 +352,7 @@ func main() {
 		time.Now().Format(time.RFC3339), thresholdPercent, pollIntervalMs)
 
 	resetTriggered := false
+	noCreditsNotified := false
 	lastLoggedPercent := -1
 	lastHeartbeat := time.Now()
 	consecutiveErrors := 0
@@ -412,8 +420,10 @@ func main() {
 					outcome, err := globalClient.TriggerReset(creditToUse.ID)
 					if err != nil {
 						fmt.Printf("[%s] ❌ Reset failed: %v\n", timestamp, err)
+						notify(fmt.Sprintf("Reset failed at %d%% usage: %v", usedPercent, err))
 					} else {
 						fmt.Printf("[%s] ✅ Reset successful! Outcome: %s\n", timestamp, outcome)
+						notify(fmt.Sprintf("Usage hit %d%%, rate limit reset (%d credits left)", usedPercent, creditsAvailable-1))
 						resetTriggered = true
 						lastLoggedPercent = -1 // Reset logging to show new usage after reset
 
@@ -424,6 +434,10 @@ func main() {
 					}
 				} else {
 					fmt.Printf("[%s] ⚠️  Threshold reached but no credits available!\n", timestamp)
+					if !noCreditsNotified {
+						notify(fmt.Sprintf("Usage at %d%% and no reset credits left", usedPercent))
+						noCreditsNotified = true
+					}
 				}
 			}
 
