@@ -1,26 +1,30 @@
-class LimitlessCodux < Formula
-  desc "Prevent Codex agent downtime by auto-resetting rate limits"
-  homepage "https://github.com/limitless-codex/limitless-codex"
-  url "https://github.com/limitless-codex/limitless-codex/releases/download/v1.0.0/limitless-codex-darwin-arm64"
-  version "1.0.0"
-  sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+class LimitlessCodex < Formula
+  desc "Resets your Codex rate limit at 99% so your agents never stall"
+  homepage "https://github.com/Comradery64/limitless-codex"
+  license "MIT"
+  head "https://github.com/Comradery64/limitless-codex.git", branch: "main"
 
-  bottle :unneeded
+  depends_on "go" => :build
+  depends_on macos: :ventura
 
-  depends_on "openai/codex/codex"
-
+  # Built from source and signed ad hoc on the user's Mac, so Gatekeeper never
+  # quarantines it and no Apple Developer account is involved.
   def install
-    bin.install "limitless-codex-darwin-arm64" => "limitless-codex"
+    system "make", "app", "VERSION=#{version}"
+    prefix.install "bin/limitless-codex.app"
+    bin.install_symlink prefix/"limitless-codex.app/Contents/MacOS/limitless-codex"
   end
 
-  service do
-    run [opt_bin/"limitless-codex"]
-    keep_alive true
-    log_path "#{ENV['HOME']}/.local/var/log/limitless-codex.log"
-    error_log_path "#{ENV['HOME']}/.local/var/log/limitless-codex-error.log"
+  def caveats
+    <<~EOS
+      Finish setup (Codex sign-in, notifications, background monitoring):
+        limitless-codex setup
+    EOS
   end
 
   test do
-    system "#{bin}/limitless-codex", "--version"
+    system "codesign", "--verify", prefix/"limitless-codex.app"
+    output = shell_output("CODEX_BIN=/nonexistent #{bin}/limitless-codex --mode=status 2>&1", 1)
+    assert_match "Failed to create Codex client", output
   end
 end
