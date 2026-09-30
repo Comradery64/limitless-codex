@@ -7,9 +7,10 @@ INSTALL_DIR := ~/.local/bin
 APP := $(BUILD_DIR)/limitless-codex.app
 APP_VERSION := $(shell echo $(VERSION) | sed -E 's/^v//; s/-.*//')
 # Compiler and SDK must come from the same toolchain: Homebrew sets SDKROOT to the
-# Command Line Tools SDK, which an older Xcode's swiftc can't read. Prefer CLT.
+# Command Line Tools SDK, which an older Xcode's swiftc can't read. Prefer CLT,
+# and call /usr/bin/xcrun directly: Homebrew shims xcrun and overrides the choice.
 CLT := /Library/Developer/CommandLineTools
-SWIFTC ?= env -u SDKROOT $(if $(wildcard $(CLT)/usr/bin/swiftc),DEVELOPER_DIR=$(CLT)) xcrun swiftc
+SWIFTC ?= env -u SDKROOT $(if $(wildcard $(CLT)/usr/bin/swiftc),DEVELOPER_DIR=$(CLT)) /usr/bin/xcrun swiftc
 
 help:
 	@echo "limitless-codex build targets:"
