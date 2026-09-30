@@ -4,7 +4,7 @@
 
 **DONE:**
 - Core tool: limitless-codex (Go binary, 3.2 MB)
-- v1.0.0: Daemon mode (polling, auto-reset at 99.8%)
+- v1.0.0: Daemon mode (polling, auto-reset at 99%)
 - v1.1.0: HTTP API mode + PHP script for shared hosting
 - EasyCron integration documented
 - README leads with free/accessible options
@@ -62,7 +62,7 @@ Use `wrangler dev` to test before publishing to CF registry.
 
 **All three methods do the same thing:**
 1. Check Codex usage every 30 seconds
-2. Trigger reset if usage >= 99.8%
+2. Trigger reset if usage >= 99%
 3. Log all actions (audit trail)
 4. Never store credentials on disk
 

@@ -17,7 +17,7 @@ import (
 
 const (
 	pollIntervalMs   = 30 * 1000  // 30 seconds
-	thresholdPercent = 99.8
+	thresholdPercent = 99.0
 )
 
 func getCodexBin() string {

@@ -154,7 +154,7 @@ All actions logged with timestamp:
 ```
 [2026-09-28T03:51:50Z] Usage: 63% | Resets in: 8109min | Credits: 2
 [2026-09-28T04:21:50Z] Usage: 64% | Resets in: 8108min | Credits: 2
-[2026-09-28T05:51:50Z] 🚨 THRESHOLD REACHED: 99.8% usage
+[2026-09-28T05:51:50Z] 🚨 THRESHOLD REACHED: 99% usage
 [2026-09-28T05:51:51Z] ✅ Reset successful! Outcome: reset
 ```
 

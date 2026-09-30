@@ -8,7 +8,7 @@ Prevents Codex agent downtime by automatically resetting your rate limit before 
 
 When you hit your Codex weekly rate limit, **all agents pause immediately**. If you're running 100+ agents, this is unacceptable.
 
-**limitless-codex** monitors your usage and triggers a reset at 99.8% usage — before the hard limit stops everything.
+**limitless-codex** monitors your usage and triggers a reset at 99% usage — before the hard limit stops everything.
 
 ## Features
 
@@ -72,7 +72,7 @@ Environment variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CODEX_BIN` | `~/.local/bin/codex` | Path to codex CLI |
-| `THRESHOLD` | `99.8` | Reset threshold (%) |
+| `THRESHOLD` | `99` | Reset threshold (%) |
 | `POLL_INTERVAL_MS` | `30000` | Check interval (ms) |
 | `CODEX_MONITOR_URL` | (for PHP) | Your VPS endpoint |
 
@@ -89,7 +89,7 @@ Environment variables:
 ## How it works
 
 1. Monitor polls Codex usage every 30 seconds
-2. When usage hits 99.8%, automatically triggers a reset
+2. When usage hits 99%, automatically triggers a reset
 3. Logs all actions (audit trail)
 4. Waits 5 minutes before next reset (prevents spam)
 
