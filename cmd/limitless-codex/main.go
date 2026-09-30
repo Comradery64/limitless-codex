@@ -10,15 +10,25 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
 )
 
-const (
-	pollIntervalMs   = 30 * 1000  // 30 seconds
-	thresholdPercent = 99.0
-)
+const pollIntervalMs = 30 * 1000 // 30 seconds
+
+var thresholdPercent = getThreshold()
+
+func getThreshold() float64 {
+	if v := os.Getenv("THRESHOLD"); v != "" {
+		if t, err := strconv.ParseFloat(v, 64); err == nil && t > 0 && t <= 100 {
+			return t
+		}
+		fmt.Fprintf(os.Stderr, "Invalid THRESHOLD %q, using default 99\n", v)
+	}
+	return 99.0
+}
 
 func getCodexBin() string {
 	if bin := os.Getenv("CODEX_BIN"); bin != "" {
