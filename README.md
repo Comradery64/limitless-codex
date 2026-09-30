@@ -48,8 +48,21 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for all options.
 ### Homebrew (macOS)
 
 ```bash
-brew tap Comradery64/limitless-codex
-brew install limitless-codex
+brew tap Comradery64/limitless-codex https://github.com/Comradery64/limitless-codex
+brew install --HEAD limitless-codex
+limitless-codex setup
+```
+
+Setup is a short guided window: it checks your Codex sign-in, turns on notifications, and starts the background monitor. When a step needs a System Settings change, it opens the exact pane and a guide beside it points to the switch.
+
+The app builds from source on your Mac and is signed locally. No Apple Developer account is involved, and Gatekeeper doesn't block it.
+
+To uninstall:
+
+```bash
+launchctl bootout gui/$(id -u)/io.github.comradery64.limitless-codex
+rm ~/Library/LaunchAgents/io.github.comradery64.limitless-codex.plist
+brew uninstall limitless-codex
 ```
 
 ### From source
@@ -57,9 +70,11 @@ brew install limitless-codex
 ```bash
 git clone https://github.com/Comradery64/limitless-codex
 cd limitless-codex
-make build
-make install
+make install-app      # macOS app in ~/Applications, CLI in ~/.local/bin
+limitless-codex setup
 ```
+
+`make build && make install` builds only the CLI, for Linux or servers.
 
 ### Download binary
 
@@ -98,7 +113,7 @@ Environment variables:
 **Local monitoring (macOS/Linux):**
 ```bash
 limitless-codex --mode=daemon
-# Runs in background, check logs with: tail -f ~/.local/var/log/limitless-codex.log
+# Runs in background, check logs with: tail -f ~/Library/Logs/limitless-codex.log
 ```
 
 **Remote HTTP API:**
