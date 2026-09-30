@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Welcome to limitless-codex</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  body { display: flex; flex-direction: column; }
+  /* Material: the native window supplies vibrancy; the prototype fakes it. */
+  body.prototype { background: linear-gradient(160deg, #EEF2F1, #E3E7EA); }
+  @media (prefers-color-scheme: dark) { body.prototype { background: linear-gradient(160deg, #1F2227, #15171B); } }
+
+  .drag { height: 28px; flex: none; -webkit-app-region: drag; } /* room for traffic lights */
+
+  .viewport { position: relative; flex: 1; overflow: hidden; }
+  .track { position: absolute; inset: 0; display: flex; will-change: transform; }
+  .page {
+    flex: 0 0 100%; height: 100%; padding: 4px 56px 0;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+  .page[aria-hidden="true"] { pointer-events: none; }
+  .art { width: 440px; height: 220px; flex: none; margin-bottom: 22px; display: grid; place-items: center; }
+  .art svg { width: 100%; height: 100%; overflow: visible; }
+  /* The final page also shows the status card, so its art is shorter. */
+  .page[data-step="done"] .art { height: 132px; margin-bottom: 16px; }
+  .page h1 { margin-bottom: 8px; }
+  .page p { max-width: 430px; }
+  .actions { margin-top: 20px; min-height: 64px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .hint { font-size: 12px; color: var(--text-3); max-width: 380px; }
+  .hint b { color: var(--text-2); font-weight: 600; }
+  .row { display: flex; gap: 10px; align-items: center; justify-content: center; }
+  [hidden] { display: none !important; }
+
+  /* Content inside a page fades in as a group when state changes */
+  .swap { animation: swap-in 260ms cubic-bezier(.2,.8,.2,1); }
+  @keyframes swap-in { from { opacity: 0; transform: translateY(4px); } }
+
+  footer {
+    flex: none; height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--hairline);
+  }
+  .dots { display: flex; gap: 7px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); opacity: .5; transition: opacity 200ms, background-color 200ms, transform 200ms; }
+  .dots i.on { background: var(--accent-strong); opacity: 1; transform: scale(1.15); }
+  .dots i.done { background: var(--accent); opacity: .8; }
+  footer .row { gap: 8px; }
+
+  .copy { display: inline-flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px; border-radius: 8px; background: rgba(127,127,127,.12); }
+  .copy .btn { height: 24px; line-height: 24px; padding: 0 10px; font-size: 12px; }
+
+  /* Status card on the final page */
+  .card { width: 380px; padding: 16px 18px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--hairline); text-align: left; display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 12.5px; }
+  .card dt { color: var(--text-3); }
+  .card dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Illustrations -------------------------------------------------------- */
+  .ill-surface { fill: var(--surface-solid); stroke: var(--hairline); }
+  .ill-text { fill: var(--text); font: 600 13px -apple-system, system-ui, sans-serif; }
+  .ill-text-2 { fill: var(--text-2); font: 12px -apple-system, system-ui, sans-serif; }
+  .ill-mono { font: 13px ui-monospace, "SF Mono", Menlo, monospace; }
+  .ill-accent { fill: var(--accent-strong); }
+  @media (prefers-color-scheme: dark) { .ill-accent { fill: var(--accent); } }
+  .cursor { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.35)); }
+</style>
+</head>
+<body>
+<div class="drag"></div>
+
+<main class="viewport">
+  <div class="track" id="track">
+
+    <!-- 1 · Welcome -->
+    <section class="page" data-step="welcome">
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 440 220">
+          <image href="icon.svg" x="160" y="0" width="120" height="120"/>
+          <g transform="translate(70 150)">
+            <rect width="300" height="10" rx="5" fill="currentColor" opacity=".10"/>
+            <rect id="w-fill" width="300" height="10" rx="5" class="ill-accent" style="transform-box: fill-box; transform-origin: left; transform: scaleX(0)"/>
+            <text id="w-pct" x="150" y="40" text-anchor="middle" class="ill-text" style="font-size:15px;font-variant-numeric:tabular-nums">0% of weekly limit</text>
+          </g>
+        </svg>
+      </div>
+      <h1>Never stall at your Codex limit</h1>
+      <p>limitless-codex watches your weekly Codex usage. At 99% it spends one of your reset credits, so your agents keep running.</p>
+      <div class="actions"><button class="btn primary large" data-next>Get Started</button></div>
+    </section>
+
+    <!-- 2 · Codex account -->
+    <section class="page" data-step="codex">
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 440 220">
+          <rect x="60" y="14" width="320" height="190" rx="12" fill="#16171D" stroke="rgba(255,255,255,.08)"/>
+          <circle cx="80" cy="33" r="5.5" fill="#FF5F57"/><circle cx="98" cy="33" r="5.5" fill="#FEBC2E"/><circle cx="116" cy="33" r="5.5" fill="#28C840"/>
+          <g class="ill-mono" fill="#E5E7EB">
+            <text x="82" y="82"><tspan fill="#6EE7B7">$</tspan> <tspan id="c-typed"></tspan><tspan id="c-caret" fill="#6EE7B7">▍</tspan></text>
+            <text id="c-out" x="82" y="112" fill="#9CA3AF" opacity="0">Logged in using ChatGPT</text>
+          </g>
+          <g id="c-check" opacity="0" transform="translate(220 160)">
+            <circle r="18" fill="#10B981"/>
+            <path d="M-8 0 L-2.5 6 L8 -6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </svg>
+      </div>
+      <h1>Connect to Codex</h1>
+      <p>limitless-codex uses the Codex sign-in you already have. Your credentials stay with Codex on this Mac.</p>
+      <div class="actions" id="codex-actions"></div>
+    </section>
+
+    <!-- 3 · Notifications -->
+    <section class="page" data-step="notify">
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 440 220">
+          <!-- macOS permission banner -->
+          <g id="n-banner">
+            <rect x="70" y="30" width="300" height="118" rx="16" class="ill-surface" style="filter: drop-shadow(0 10px 24px rgba(0,0,0,.18))"/>
+            <image href="icon.svg" x="84" y="42" width="40" height="40"/>
+            <text x="134" y="58" class="ill-text">“limitless-codex” Notifications</text>
+            <text x="134" y="76" class="ill-text-2">Notifications may include alerts,</text>
+            <text x="134" y="92" class="ill-text-2">sounds and icon badges.</text>
+            <rect x="86" y="108" width="132" height="28" rx="7" fill="currentColor" opacity=".08"/>
+            <text x="152" y="126" text-anchor="middle" class="ill-text" style="font-weight:500">Don’t Allow</text>
+            <rect id="n-allow" x="224" y="108" width="132" height="28" rx="7" class="ill-accent"/>
+            <text x="290" y="126" text-anchor="middle" class="ill-text" fill="#fff" style="fill:#fff">Allow</text>
+          </g>
+          <g id="n-check" opacity="0" transform="translate(220 90)">
+            <circle r="26" fill="#10B981"/>
+            <path d="M-11 0 L-3.5 8 L11 -8" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+          <path id="n-cursor" class="cursor" d="M0 0 L0 17 L4.5 13 L7.5 20 L10 19 L7 12 L13 12 Z" fill="#111" stroke="#fff" stroke-width="1.2" transform="translate(360 196)"/>
+        </svg>
+      </div>
+      <h1>Allow notifications</h1>
+      <p>You get one notification when a reset happens and one if something goes wrong. Nothing else.</p>
+      <div class="actions" id="notify-actions"></div>
+    </section>
+
+    <!-- 4 · Background service -->
+    <section class="page" data-step="service">
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 440 220">
+          <rect x="60" y="20" width="320" height="170" rx="14" class="ill-surface"/>
+          <text x="80" y="50" class="ill-text" style="font-size:14px">Login Items &amp; Extensions</text>
+          <text x="80" y="72" class="ill-text-2">Allow in the Background</text>
+          <rect x="76" y="84" width="288" height="1" fill="currentColor" opacity=".08"/>
+          <image href="icon.svg" x="80" y="98" width="30" height="30"/>
+          <text x="120" y="112" class="ill-text">limitless-codex</text>
+          <text x="120" y="127" class="ill-text-2" style="font-size:11px">Watches Codex usage</text>
+          <g id="s-toggle" transform="translate(322 104)">
+            <rect id="s-track" width="36" height="20" rx="10" fill="currentColor" opacity=".18"/>
+            <circle id="s-knob" cx="10" cy="10" r="8" fill="#fff" style="filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.3))"/>
+          </g>
+          <rect x="76" y="142" width="288" height="1" fill="currentColor" opacity=".08"/>
+          <g opacity=".45"><rect x="80" y="152" width="30" height="30" rx="7" fill="currentColor" opacity=".12"/>
+          <rect x="120" y="160" width="110" height="8" rx="4" fill="currentColor" opacity=".14"/></g>
+        </svg>
+      </div>
+      <h1>Keep watching in the background</h1>
+      <p>Uses about 2 MB of memory and starts on its own when you log in, so there's nothing to remember.</p>
+      <div class="actions" id="service-actions"></div>
+    </section>
+
+    <!-- 5 · Test -->
+    <section class="page" data-step="test">
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 440 220">
+          <defs><clipPath id="t-screen"><rect x="30" y="10" width="380" height="200" rx="12"/></clipPath></defs>
+          <g clip-path="url(#t-screen)">
+            <image href="wallpaper.jpg" x="30" y="3.1" width="380" height="213.8" preserveAspectRatio="none"/>
+            <rect x="30" y="10" width="380" height="20" fill="rgba(255,255,255,.18)"/>
+            <text x="394" y="24" text-anchor="end" style="font: 600 10px -apple-system, system-ui; fill: rgba(255,255,255,.85)">9:55</text>
+            <g id="t-banner" transform="translate(420 40)">
+              <rect width="226" height="58" rx="13" fill="rgba(245,245,247,.92)" style="filter: drop-shadow(0 8px 18px rgba(0,0,0,.25))"/>
+              <image href="icon.svg" x="9" y="11" width="36" height="36"/>
+              <text x="52" y="26" style="font: 600 11.5px -apple-system, system-ui; fill:#111">limitless-codex</text>
+              <text x="52" y="43" style="font: 11px -apple-system, system-ui; fill:#444">Usage hit 99%, limit reset</text>
+            </g>
+          </g>
+          <rect x="30" y="10" width="380" height="200" rx="12" fill="none" stroke="var(--hairline)"/>
+        </svg>
+      </div>
+      <h1>Make sure it reaches you</h1>
+      <p>Send a test notification. It should slide in at the top-right of your screen.</p>
+      <div class="actions" id="test-actions"></div>
+    </section>
+
+    <!-- 6 · Done -->
+    <section class="page" data-step="done">
+      <div class="art" aria-hidden="true">
+        <img id="d-logo" src="logo.svg" width="124" alt="">
+      </div>
+      <h1>You're all set</h1>
+      <p>limitless-codex is running. You can close this window, and it keeps working after a restart.</p>
+      <div class="actions" id="done-actions"></div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="dots" id="dots"></div>
+  <div class="row">
+    <button class="btn" id="back">Back</button>
+    <button class="btn primary" id="next">Continue</button>
+  </div>
+</footer>
+
+<script>
+/* ---------------------------------------------------------------------------
+ * Bridge. In the app, native code answers through window.lc.update(state).
+ * Opened in a plain browser, a mock plays the native side so the design can
+ * be reviewed end to end.
+ * ------------------------------------------------------------------------- */
+const native = window.webkit?.messageHandlers?.lc;
+const send = (action, arg) => native ? native.postMessage({ action, arg }) : mock(action, arg);
+
+const state = {
+  codex: 'checking',      // checking | missing | signedOut | signingIn | ok
+  notify: 'unknown',      // unknown | asking | granted | denied
+  service: 'stopped',     // stopped | starting | running | blocked
+  test: 'idle',           // idle | sent | confirmed | missed
+  status: null,           // { usedPercent, credits, resetsInMin, threshold }
+};
+window.lc = { update(patch) { Object.assign(state, patch); render(); } };
+
+/* ---------------------------------------------------------------------------
+ * Spring pager. Critically damped (damping 1.0, response 0.42s) and started
+ * from the live position, so a click mid-transition just re-targets it.
+ * ------------------------------------------------------------------------- */
+const track = document.getElementById('track');
+const pages = [...document.querySelectorAll('.page')];
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+let index = 0, pos = 0, vel = 0, raf = 0, last = 0;
+
+function spring(now) {
+  const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+  const w = 2 * Math.PI / 0.42, k = w * w, c = 2 * 1.0 * w;
+  vel += (-k * (pos - index) - c * vel) * dt;
+  pos += vel * dt;
+  if (Math.abs(pos - index) < 0.0005 && Math.abs(vel) < 0.001) { pos = index; vel = 0; raf = 0; }
+  paint();
+  if (raf) raf = requestAnimationFrame(spring);
+}
+function paint() {
+  track.style.transform = `translate3d(${-pos * 100}%,0,0)`;
+  pages.forEach((p, i) => {
+    const d = Math.min(Math.abs(i - pos), 1);
+    p.style.opacity = 1 - d * 0.9;               // outgoing page fades as it leaves
+    p.setAttribute('aria-hidden', i === index ? 'false' : 'true');
+  });
+}
+function go(i) {
+  index = Math.max(0, Math.min(pages.length - 1, i));
+  if (reduced.matches) { pos = index; vel = 0; paint(); }
+  else if (!raf) { last = performance.now(); raf = requestAnimationFrame(spring); }
+  onEnter(pages[index].dataset.step);
+  render();
+}
+
+/* ---------------------------------------------------------------------------
+ * Per-step content. Every step that needs the user says what will happen,
+ * what to click, and offers a button that jumps to the exact setting.
+ * ------------------------------------------------------------------------- */
+const $ = (id) => document.getElementById(id);
+const CHECK = '<svg class="dot" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="currentColor"/><path d="M4.5 8.2 L7 10.6 L11.5 5.6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const WARN = '<svg class="dot" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="currentColor"/><rect x="7.1" y="3.6" width="1.8" height="5.6" rx=".9" fill="#fff"/><circle cx="8" cy="11.6" r="1.1" fill="#fff"/></svg>';
+const SPIN = '<svg class="spinner" viewBox="0 0 16 16">' + [...Array(8)].map((_, i) =>
+  `<rect x="7.2" y="1" width="1.6" height="4" rx=".8" fill="currentColor" opacity="${(i + 1) / 8}" transform="rotate(${i * 45} 8 8)"/>`).join('') + '</svg>';
+
+const views = {
+  codex: () => ({
+    checking:  `<span class="status">${SPIN} Looking for Codex…</span>`,
+    ok:        `<span class="status ok">${CHECK} Signed in to Codex with ChatGPT</span>`,
+    signingIn: `<span class="status">${SPIN} Finish signing in in your browser…</span>
+                <p class="hint">A browser tab opened. Sign in there and come back. This page updates by itself.</p>`,
+    signedOut: `<button class="btn primary large" data-act="codexLogin">Sign In to Codex</button>
+                <p class="hint">Opens your browser to sign in with ChatGPT.</p>`,
+    missing:   `<span class="status warn">${WARN} Codex isn't installed yet</span>
+                <span class="copy"><code>brew install codex</code><button class="btn" data-act="copy" data-arg="brew install codex">Copy</button></span>
+                <p class="hint">Run this in Terminal, then come back. This page checks again by itself.</p>`,
+  })[state.codex],
+  notify: () => ({
+    unknown: `<button class="btn primary large" data-act="requestNotifications">Allow Notifications</button>
+              <p class="hint">macOS will ask next. Click <b>Allow</b>.</p>`,
+    asking:  `<span class="status">${SPIN} Waiting for your answer…</span>
+              <p class="hint">Look at the top-right of your screen and click <b>Allow</b>.</p>`,
+    granted: `<span class="status ok">${CHECK} Notifications are on</span>`,
+    denied:  `<span class="status warn">${WARN} Notifications are turned off</span>
+              <button class="btn primary large" data-act="openSettings" data-arg="notifications">Open Notification Settings</button>
+              <p class="hint">A guide appears next to System Settings and points to the switch.</p>`,
+  })[state.notify],
+  service: () => ({
+    stopped:  `<button class="btn primary large" data-act="startService">Start Monitoring</button>
+               <p class="hint">macOS will show <b>“Background Items Added”</b>. That's expected.</p>`,
+    starting: `<span class="status">${SPIN} Starting…</span>`,
+    running:  `<span class="status ok">${CHECK} Monitoring is running</span>`,
+    blocked:  `<span class="status warn">${WARN} limitless-codex is switched off in Login Items</span>
+               <button class="btn primary large" data-act="openSettings" data-arg="loginItems">Open Login Items</button>
+               <p class="hint">A guide appears next to System Settings and points to the switch.</p>`,
+  })[state.service],
+  test: () => ({
+    idle:      `<button class="btn primary large" data-act="sendTest">Send Test Notification</button>`,
+    sent:      `<h2>Did you see it?</h2>
+                <div class="row"><button class="btn large" data-act="testMissed">No</button><button class="btn primary large" data-act="testSeen">Yes, I saw it</button></div>`,
+    confirmed: `<span class="status ok">${CHECK} Notifications reach you</span>`,
+    missed:    `<span class="status warn">${WARN} A Focus mode may be hiding it</span>
+                <div class="row"><button class="btn large" data-act="sendTest">Send Again</button>
+                <button class="btn primary large" data-act="openSettings" data-arg="focus">Open Focus Settings</button></div>
+                <p class="hint">Turn off the active Focus, or add limitless-codex to its allowed apps.</p>`,
+  })[state.test],
+  done: () => {
+    const s = state.status;
+    return s ? `<div class="card">
+        <svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="22" fill="none" stroke="currentColor" stroke-opacity=".1" stroke-width="6"/>
+          <circle cx="27" cy="27" r="22" fill="none" stroke="var(--accent-strong)" stroke-width="6" stroke-linecap="round" pathLength="100" stroke-dasharray="${s.usedPercent} 100" transform="rotate(-90 27 27)"/>
+          <text x="27" y="31" text-anchor="middle" style="font: 700 12px -apple-system, system-ui; fill: var(--text)">${s.usedPercent}%</text></svg>
+        <dl><dt>Weekly usage</dt><dd>${s.usedPercent}% used</dd>
+            <dt>Resets on its own in</dt><dd>${fmtMins(s.resetsInMin)}</dd>
+            <dt>Reset credits</dt><dd>${s.credits} left</dd>
+            <dt>Auto-reset at</dt><dd>${s.threshold}%</dd></dl></div>
+      <button class="btn primary large" data-act="finish">Done</button>`
+      : `<span class="status">${SPIN} Reading your usage…</span>`;
+  },
+};
+const fmtMins = (m) => m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+
+// A step is complete when the user can move on.
+const complete = {
+  welcome: () => true,
+  codex: () => state.codex === 'ok',
+  notify: () => state.notify === 'granted',
+  service: () => state.service === 'running',
+  test: () => state.test === 'confirmed' || state.test === 'missed',
+  done: () => true,
+};
+
+const rendered = {};
+function render() {
+  pages.forEach((p) => {
+    const step = p.dataset.step, box = document.getElementById(step + '-actions');
+    if (!box || !views[step]) return;
+    const html = views[step]();
+    if (rendered[step] !== html) {
+      rendered[step] = html;
+      box.innerHTML = html;
+      box.classList.remove('swap'); void box.offsetWidth; box.classList.add('swap');
+    }
+  });
+  const step = pages[index].dataset.step;
+  $('back').style.visibility = index === 0 || step === 'done' ? 'hidden' : 'visible';
+  $('next').style.visibility = step === 'welcome' || step === 'done' ? 'hidden' : 'visible';
+  $('next').disabled = !complete[step]();
+  $('dots').innerHTML = pages.map((p, i) =>
+    `<i class="${i === index ? 'on' : i < index ? 'done' : ''}"></i>`).join('');
+}
+
+function onEnter(step) {
+  illustrate(step);
+  if (step === 'codex' && state.codex !== 'ok') send('checkCodex');
+  if (step === 'notify') send('checkNotifications');
+  if (step === 'service') send('checkService');
+  if (step === 'done') send('readStatus');
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act],[data-next]');
+  if (!t) return;
+  if (t.hasAttribute('data-next')) return go(index + 1);
+  const { act, arg } = t.dataset;
+  if (act === 'copy') { native ? send('copy', arg) : navigator.clipboard?.writeText(arg); t.textContent = 'Copied'; return; }
+  if (act === 'testSeen') return lc.update({ test: 'confirmed' }), setTimeout(() => go(index + 1), 700);
+  if (act === 'testMissed') return lc.update({ test: 'missed' });
+  send(act, arg);
+});
+$('next').onclick = () => go(index + 1);
+$('back').onclick = () => go(index - 1);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !$('next').disabled && $('next').style.visibility !== 'hidden') go(index + 1);
+});
+
+// Finishing a step moves on by itself, after a beat to register the checkmark.
+let lastComplete = {};
+const autoAdvance = { codex: 1, notify: 1, service: 1 };
+const origUpdate = lc.update;
+lc.update = (patch) => {
+  origUpdate(patch);
+  const step = pages[index].dataset.step;
+  const now = complete[step]();
+  if (autoAdvance[step] && now && !lastComplete[step]) setTimeout(() => { if (pages[index].dataset.step === step) go(index + 1); }, 900);
+  lastComplete[step] = now;
+};
+
+/* ---------------------------------------------------------------------------
+ * Illustrations. Each loops a short story with a rest between plays, and
+ * stops when its page is not showing.
+ * ------------------------------------------------------------------------- */
+let story = 0;
+const wait = (ms) => new Promise((r) => setTimeout(r, reduced.matches ? 0 : ms));
+function tween(ms, fn, ease = (t) => 1 - Math.pow(1 - t, 3)) {
+  return new Promise((done) => {
+    if (reduced.matches) { fn(1); return done(); }
+    const t0 = performance.now();
+    (function f(now) { const t = Math.min((now - t0) / ms, 1); fn(ease(t)); t < 1 ? requestAnimationFrame(f) : done(); })(t0);
+  });
+}
+const springEase = (t) => 1 - Math.exp(-7 * t) * (1 + 7 * t);   // critically damped, normalized
+const lerp = (a, b, t) => a + (b - a) * t;
+
+async function illustrate(step) {
+  const id = ++story, live = () => id === story;
+  if (step === 'welcome') {
+    const fill = $('w-fill'), pct = $('w-pct');
+    while (live()) {
+      await tween(2600, (t) => { fill.style.transform = `scaleX(${t * .99})`; pct.textContent = `${Math.round(t * 99)}% of weekly limit`; }, (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+      if (!live()) return;
+      pct.textContent = 'Reset credit used — back to 0%';
+      await wait(500);
+      await tween(700, (t) => { fill.style.transform = `scaleX(${lerp(.99, 0, t)})`; }, springEase);
+      await wait(1600);
+      pct.textContent = '0% of weekly limit';
+    }
+  }
+  if (step === 'codex') {
+    const typed = $('c-typed'), out = $('c-out'), check = $('c-check'), cmd = 'codex login status';
+    while (live()) {
+      typed.textContent = ''; out.setAttribute('opacity', 0); check.setAttribute('opacity', 0);
+      await wait(500);
+      for (let i = 1; i <= cmd.length && live(); i++) { typed.textContent = cmd.slice(0, i); await wait(55); }
+      await wait(350); out.setAttribute('opacity', 1);
+      await tween(420, (t) => { check.setAttribute('opacity', t); check.setAttribute('transform', `translate(220 160) scale(${lerp(.6, 1, t)})`); }, springEase);
+      await wait(2400);
+    }
+  }
+  if (step === 'notify') {
+    const cur = $('n-cursor'), banner = $('n-banner'), allow = $('n-allow'), check = $('n-check');
+    while (live()) {
+      banner.style.opacity = 0; check.setAttribute('opacity', 0); cur.style.opacity = 1;
+      await tween(450, (t) => { banner.style.opacity = t; banner.setAttribute('transform', `translate(0 ${lerp(-14, 0, t)})`); }, springEase);
+      await wait(300);
+      await tween(1100, (t) => cur.setAttribute('transform', `translate(${lerp(360, 292, t)} ${lerp(196, 124, t)})`));
+      allow.style.filter = 'brightness(.8)'; await wait(140); allow.style.filter = '';
+      await wait(200);
+      await tween(300, (t) => { banner.style.opacity = 1 - t; cur.style.opacity = 1 - t; });
+      await tween(420, (t) => { check.setAttribute('opacity', t); check.setAttribute('transform', `translate(220 90) scale(${lerp(.6, 1, t)})`); }, springEase);
+      await wait(2200);
+      await tween(300, (t) => check.setAttribute('opacity', 1 - t));
+      cur.setAttribute('transform', 'translate(360 196)');
+    }
+  }
+  if (step === 'service') {
+    const knob = $('s-knob'), tr = $('s-track');
+    while (live()) {
+      knob.setAttribute('cx', 10); tr.setAttribute('opacity', .18); tr.style.fill = '';
+      await wait(1200);
+      tr.style.fill = 'var(--accent-strong)';
+      await tween(360, (t) => { knob.setAttribute('cx', lerp(10, 26, t)); tr.setAttribute('opacity', lerp(.18, 1, t)); }, springEase);
+      await wait(2600);
+    }
+  }
+  if (step === 'test') {
+    const b = $('t-banner');
+    while (live()) {
+      b.setAttribute('transform', 'translate(420 40)');
+      await wait(700);
+      await tween(520, (t) => b.setAttribute('transform', `translate(${lerp(420, 174, t)} 40)`), springEase);
+      await wait(2600);
+      await tween(320, (t) => b.setAttribute('transform', `translate(${lerp(174, 420, t)} 40)`), (t) => t * t);
+      await wait(800);
+    }
+  }
+  if (step === 'done') {
+    const logo = $('d-logo');
+    await tween(700, (t) => { logo.style.opacity = t; logo.style.transform = `scale(${lerp(.85, 1, t)})`; }, springEase);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Browser-only mock of the native side, for design review.
+ * ------------------------------------------------------------------------- */
+function mock(action) {
+  const later = (ms, patch) => setTimeout(() => lc.update(patch), ms);
+  ({
+    checkCodex: () => later(900, { codex: 'signedOut' }),
+    codexLogin: () => { lc.update({ codex: 'signingIn' }); later(2200, { codex: 'ok' }); },
+    checkNotifications: () => {},
+    requestNotifications: () => { lc.update({ notify: 'asking' }); later(1800, { notify: 'denied' }); },
+    openSettings: (arg) => later(2500, arg === 'notifications' ? { notify: 'granted' } : arg === 'loginItems' ? { service: 'running' } : {}),
+    checkService: () => {},
+    startService: () => { lc.update({ service: 'starting' }); later(1200, { service: 'blocked' }); },
+    sendTest: () => later(600, { test: 'sent' }),
+    readStatus: () => later(700, { status: { usedPercent: 3, credits: 2, resetsInMin: 4331, threshold: 99 } }),
+    finish: () => {},
+  })[action]?.();
+}
+
+if (!native) document.body.classList.add('prototype');
+go(Math.max(0, pages.findIndex((p) => p.dataset.step === window.LC_START)));
+</script>
+</body>
+</html>
