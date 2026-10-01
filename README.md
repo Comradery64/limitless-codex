@@ -8,7 +8,7 @@
 
 ```bash
 brew tap Comradery64/limitless-codex https://github.com/Comradery64/limitless-codex
-brew install --HEAD limitless-codex
+brew install limitless-codex
 limitless-codex setup
 ```
 
