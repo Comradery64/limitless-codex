@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -340,6 +341,24 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "healthy", "timestamp": time.Now().Format(time.RFC3339)})
 }
 
+// uninstall stops the background monitor and removes the LaunchAgent that setup
+// wrote. Homebrew can't run code on uninstall, so this runs first.
+func uninstall() {
+	if runtime.GOOS != "darwin" {
+		fmt.Println("Nothing to do here: on Linux, stop the systemd service with `sudo systemctl disable --now limitless-codex`.")
+		return
+	}
+	const label = "io.github.comradery64.limitless-codex"
+	home, _ := os.UserHomeDir()
+	plist := filepath.Join(home, "Library", "LaunchAgents", label+".plist")
+	exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), label)).Run()
+	if err := os.Remove(plist); err != nil && !os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "Failed to remove %s: %v\n", plist, err)
+		os.Exit(1)
+	}
+	fmt.Println("✓ Background monitor stopped and removed. Finish with: brew uninstall limitless-codex")
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "setup" {
 		app := siblingApp()
@@ -351,6 +370,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to open %s: %v\n", app, err)
 			os.Exit(1)
 		}
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "uninstall" {
+		uninstall()
 		return
 	}
 
