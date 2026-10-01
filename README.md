@@ -8,9 +8,12 @@
 
 ```bash
 brew tap Comradery64/limitless-codex https://github.com/Comradery64/limitless-codex
+brew trust --formula comradery64/limitless-codex/limitless-codex
 brew install limitless-codex
 limitless-codex setup
 ```
+
+Homebrew only installs from third-party taps you trust. The second line trusts this one formula, not the whole tap.
 
 `setup` opens a short guided window that walks you through:
 
