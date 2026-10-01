@@ -1,8 +1,8 @@
 class LimitlessCodex < Formula
   desc "Resets your Codex rate limit at 99% so your agents never stall"
   homepage "https://github.com/Comradery64/limitless-codex"
-  url "https://github.com/Comradery64/limitless-codex/archive/refs/tags/v1.2.0.tar.gz"
-  sha256 "c0117b24a23f9205adf45bdbf96f0a7a912c565f590a6e498893f4046ab27f11"
+  url "https://github.com/Comradery64/limitless-codex/archive/refs/tags/v1.2.1.tar.gz"
+  sha256 "bf5f6708ee0199551f70e513e524d1ac8d4fdf090e3d7e02502b9487c26d416b"
   license "MIT"
   head "https://github.com/Comradery64/limitless-codex.git", branch: "main"
 
