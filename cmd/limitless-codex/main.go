@@ -477,7 +477,12 @@ func main() {
 						notify(fmt.Sprintf("Reset failed at %d%% usage: %v", usedPercent, err))
 					} else {
 						fmt.Printf("[%s] ✅ Reset successful! Outcome: %s\n", timestamp, outcome)
-						notify(fmt.Sprintf("Usage hit %d%%, rate limit reset (%d credits left)", usedPercent, creditsAvailable-1))
+						left := creditsAvailable - 1
+						unit := "credits"
+						if left == 1 {
+							unit = "credit"
+						}
+						notify(fmt.Sprintf("Usage hit %d%%, rate limit reset (%d %s left)", usedPercent, left, unit))
 						resetTriggered = true
 						lastLoggedPercent = -1 // Reset logging to show new usage after reset
 
