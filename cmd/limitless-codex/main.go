@@ -435,6 +435,9 @@ func main() {
 	lastHeartbeat := time.Now()
 	consecutiveErrors := 0
 	const maxConsecutiveErrors = 10
+	// Stat the path we were launched from (Homebrew's stable opt link), so an
+	// upgrade that replaces the binary is noticed and launchd starts the new one.
+	launchedFile, _ := os.Stat(os.Args[0])
 
 	ticker := time.NewTicker(time.Duration(pollIntervalMs) * time.Millisecond)
 	defer ticker.Stop()
@@ -445,6 +448,11 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
+			if now, err := os.Stat(os.Args[0]); launchedFile != nil && err == nil && !os.SameFile(launchedFile, now) {
+				fmt.Printf("[%s] New version installed, restarting\n", time.Now().Format(time.RFC3339))
+				return
+			}
+
 			usage, err := globalClient.CheckUsage()
 			if err != nil {
 				consecutiveErrors++
