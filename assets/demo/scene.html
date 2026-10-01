@@ -1,0 +1,89 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<base href="../../app/Resources/onboarding/">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 960px; height: 600px; overflow: hidden; }
+  body { font: 13px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+         background: url(wallpaper.jpg) center / cover; position: relative; }
+  .menubar { position: absolute; inset: 0 0 auto 0; height: 26px; display: flex; align-items: center; justify-content: space-between;
+             padding: 0 14px; background: rgba(255,255,255,.22); backdrop-filter: blur(20px); color: #fff; font-weight: 500; font-size: 13px;
+             text-shadow: 0 0 1px rgba(0,0,0,.2); }
+  .menubar b { font-weight: 700; margin-right: 18px; }
+  .menubar span { margin-right: 16px; opacity: .95; }
+
+  .term { position: absolute; left: 48px; top: 62px; width: 600px; height: 470px; border-radius: 12px; overflow: hidden;
+          background: rgba(22,23,29,.94); box-shadow: 0 30px 70px rgba(0,0,0,.45), 0 0 0 .5px rgba(255,255,255,.12) inset; }
+  .bar { height: 30px; display: flex; align-items: center; padding-left: 12px; gap: 8px; position: relative; background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(255,255,255,.06); }
+  .bar i { width: 12px; height: 12px; border-radius: 50%; }
+  .bar .t { position: absolute; left: 0; right: 0; text-align: center; color: rgba(255,255,255,.55); font-size: 12px; font-weight: 600; }
+  .lines { position: absolute; top: 40px; left: 0; right: 0; bottom: 52px; overflow: hidden; padding: 0 16px;
+           font: 12.5px/21px ui-monospace, "SF Mono", Menlo, monospace; color: #D1D5DB; display: flex; flex-direction: column; justify-content: flex-end; }
+  .lines div { white-space: nowrap; }
+  .a { color: #93C5FD; } .ok { color: #6EE7B7; } .dim { color: #6B7280; }
+  .foot { position: absolute; left: 0; right: 0; bottom: 0; height: 52px; padding: 0 16px; display: flex; align-items: center; gap: 12px;
+          border-top: 1px solid rgba(255,255,255,.07); font: 12px ui-monospace, "SF Mono", Menlo, monospace; color: #9CA3AF; }
+  .meter { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .meter i { display: block; height: 100%; border-radius: 4px; transform-origin: left; }
+  .pct { width: 44px; text-align: right; font-weight: 700; color: #F9FAFB; font-variant-numeric: tabular-nums; }
+
+  .note { position: absolute; top: 38px; right: 14px; width: 372px; padding: 11px 14px 11px 11px; border-radius: 16px; display: flex; gap: 11px;
+          background: rgba(246,246,248,.86); backdrop-filter: blur(30px) saturate(180%); box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 0 0 .5px rgba(0,0,0,.08); }
+  .note img { width: 38px; height: 38px; flex: none; }
+  .note .h { display: flex; justify-content: space-between; font-weight: 700; color: #111; font-size: 13px; }
+  .note .h small { font-weight: 400; color: #6B7280; font-size: 12px; }
+  .note p { color: #222; font-size: 12.5px; line-height: 1.35; margin-top: 2px; }
+</style></head>
+<body>
+<div class="menubar"><div><b>Terminal</b><span>Shell</span><span>Edit</span><span>View</span><span>Window</span></div><div>Wed 9:55 AM</div></div>
+
+<div class="term">
+  <div class="bar"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i><div class="t">codex — 12 agents</div></div>
+  <div class="lines" id="lines"></div>
+  <div class="foot"><span>weekly usage</span><div class="meter"><i id="fill"></i></div><span class="pct" id="pct"></span></div>
+</div>
+
+<div class="note" id="note"><img src="icon.svg"><div style="flex:1"><div class="h">limitless-codex <small>now</small></div>
+  <p>Usage hit 99%, rate limit reset (1 credit left)</p></div></div>
+
+<script>
+// Deterministic scene: render(t) draws the frame at t seconds of an 8 s loop.
+const LOOP = 8, T_NOTE = 3.1, T_RESET = 3.5, T_OUT = 7.1;
+const agents = ['agent-07', 'agent-12', 'agent-03', 'agent-09', 'agent-01', 'agent-11', 'agent-05'];
+const acts = [
+  ['editing', 'src/api/auth.ts'], ['running', 'tests'], ['writing', 'db/migrations/0042.sql'], ['reading', 'docs/billing.md'],
+  ['editing', 'web/checkout.tsx'], ['refactoring', 'lib/queue.go'], ['running', 'lint'], ['editing', 'infra/main.tf'],
+  ['reviewing', 'PR #318'], ['editing', 'src/api/users.ts'], ['running', 'e2e suite'], ['writing', 'CHANGELOG.md'],
+];
+const lineAt = (i) => {
+  const a = agents[i % agents.length], [v, o] = acts[(i * 5) % acts.length];
+  const done = i % 3 === 1;
+  return `<span class="a">${a}</span> <span class="dim">▸</span> ${v} ${o}${done ? ' <span class="ok">✓</span>' : ''}`;
+};
+const spring = (t, r = .45) => { if (t <= 0) return 0; const w = 2 * Math.PI / r; return 1 - Math.exp(-w * t) * (1 + w * t); };
+
+function render(t) {
+  // A new agent line every 0.28 s, all the way through: the agents never stop.
+  const n = Math.floor(t / 0.28) + 14;
+  let html = '';
+  for (let i = Math.max(0, n - 18); i < n; i++) html += `<div>${lineAt(i)}</div>`;
+  document.getElementById('lines').innerHTML = html;
+
+  // Usage: 96% → 99% by the notification, then back to 0% and creeping up again.
+  let p, color;
+  if (t < T_RESET) { p = 96 + Math.min(3, Math.floor(t / (T_NOTE / 3.2))); color = p >= 99 ? '#EF4444' : p >= 97 ? '#F59E0B' : '#F59E0B'; }
+  else { p = Math.floor((t - T_RESET) / 1.6); color = '#10B981'; }
+  const shown = t < T_RESET ? p : p + (1 - spring(t - T_RESET, .5)) * 99;   // bar sweeps down on a spring
+  document.getElementById('fill').style.cssText = `background:${color};transform:scaleX(${Math.max(shown, 0.5) / 100})`;
+  document.getElementById('pct').textContent = `${p}%`;
+  document.getElementById('pct').style.color = t < T_RESET && p >= 99 ? '#FCA5A5' : '#F9FAFB';
+
+  // Notification slides in on a spring, leaves with an ease-in, same path both ways.
+  const note = document.getElementById('note');
+  const inX = 400 * (1 - spring(t - T_NOTE));
+  const outX = t > T_OUT ? 400 * Math.pow(Math.min((t - T_OUT) / .4, 1), 2) : 0;
+  note.style.transform = `translateX(${t < T_NOTE ? 400 : inX + outX}px)`;
+}
+render(parseFloat(location.hash.slice(1)) || 0);
+</script>
+</body></html>
