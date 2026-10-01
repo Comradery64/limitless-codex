@@ -1,5 +1,7 @@
 # limitless-codex Deployment Guide
 
+> **On a Mac, you don't need this guide.** Install the app with Homebrew and run `limitless-codex setup` (see the [README](README.md#install-macos)). This guide covers servers and shared hosting.
+
 ## Modes
 
 ### Daemon Mode (VPS - Always Running)
