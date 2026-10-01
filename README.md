@@ -77,8 +77,7 @@ The monitor uses about 39 MB of memory: about 7 MB for itself, plus the Codex co
 ## Uninstall
 
 ```bash
-launchctl bootout gui/$(id -u)/io.github.comradery64.limitless-codex
-rm ~/Library/LaunchAgents/io.github.comradery64.limitless-codex.plist
+limitless-codex uninstall    # stops the background monitor and removes it
 brew uninstall limitless-codex
 ```
 
