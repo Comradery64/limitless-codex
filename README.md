@@ -97,5 +97,3 @@ The macOS app builds from source on your Mac with Command Line Tools and is sign
 ## License
 
 MIT. Issues and PRs welcome at https://github.com/Comradery64/limitless-codex.
-
-> **For Claude Code sessions:** read [NEXT-SESSION.md](NEXT-SESSION.md) for project status and [TODO.md](TODO.md) for remaining work.

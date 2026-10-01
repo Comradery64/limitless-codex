@@ -13,3 +13,7 @@ dist/
 .vscode/
 *.iml
 .limitless-codex/
+
+# Working notes for agent sessions; kept local, never pushed
+NEXT-SESSION.md
+TODO.md
