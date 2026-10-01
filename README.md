@@ -81,11 +81,11 @@ brew uninstall limitless-codex
 
 ## Other ways to run it
 
-- **From source (macOS):** `make install-app && limitless-codex setup`
-- **Linux or a server:** `make build && make install`, then `limitless-codex --mode=daemon`
-- **Shared hosting with no always-on machine:** HTTP mode plus `php-monitor.php` on a free cron service
+**From source (macOS):** `make install-app && limitless-codex setup`
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for server and hosting setups.
+**On a Linux server:** install the `codex` CLI, sign in with `codex login --device-auth`, then run limitless-codex as a systemd service. Full steps are in [DEPLOYMENT.md](DEPLOYMENT.md#linux-server-systemd). It logs resets instead of sending notifications.
+
+**Shared hosting (cPanel): planned.** Not possible yet: only the `codex` CLI can spend reset credits, and it can't run on shared hosting. See [why](DEPLOYMENT.md#shared-hosting-cpanel-planned).
 
 ## Build notes
 
