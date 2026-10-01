@@ -2,8 +2,8 @@
 /**
  * limitless-codex shared hosting monitor
  *
- * Call this from cron or EasyCron every 30 seconds:
- * https://your-vps-ip:8080/check-and-reset
+ * Planned shared-hosting support; not usable on its own yet. It only forwards
+ * to a machine running `limitless-codex --mode=http`. See DEPLOYMENT.md.
  *
  * Stores logs locally, never exposes credentials
  */
@@ -18,19 +18,11 @@ if (!is_dir($LOG_DIR)) {
     mkdir($LOG_DIR, 0700, true);
 }
 
-// Suppress SSL verification (for self-signed certs)
-$context = stream_context_create([
-    'ssl' => [
-        'verify_peer' => false,
-        'verify_peer_name' => false,
-    ]
-]);
-
 $timestamp = date('Y-m-d\TH:i:s\Z');
 
 try {
     // Call the monitor
-    $response = @file_get_contents($CODEX_MONITOR_URL, false, $context);
+    $response = @file_get_contents($CODEX_MONITOR_URL);
 
     if ($response === false) {
         $error = error_get_last();
