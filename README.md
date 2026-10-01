@@ -1,51 +1,10 @@
 # limitless-codex
 
-Prevents Codex agent downtime by automatically resetting your rate limit before you hit the threshold.
+**Your Codex agents never stall at the weekly limit.** limitless-codex watches your usage and, at 99%, spends one of your reset credits for you, before the limit stops your agents.
 
-> **For Claude Code sessions:** Read [NEXT-SESSION.md](NEXT-SESSION.md) for project status and [TODO.md](TODO.md) for remaining work.
+<p align="center"><img src="assets/demo.gif" width="720" alt="Codex agents keep running as weekly usage hits 99%: a limitless-codex notification announces the reset and usage drops to 0%"></p>
 
-## Problem
-
-When you hit your Codex weekly rate limit, **all agents pause immediately**. If you're running 100+ agents, this is unacceptable.
-
-**limitless-codex** monitors your usage and triggers a reset at 99% usage — before the hard limit stops everything.
-
-## Features
-
-- ✅ **Works everywhere** — VPS, shared hosting, or cloud
-- ✅ **Zero infrastructure** — PHP + free EasyCron (no VPS needed)
-- ✅ **Single binary** — compiled Go, ~3 MB  
-- ✅ **Minimal overhead** — 2.4 MB memory, 0% CPU
-- ✅ **Long-lived connection** — one codex process, not 2,880/day
-- ✅ **Smart logging** — only logs on changes (not every 30s poll)
-- ✅ **SOC 2 compliant** — audit trail, secure credential handling
-
-## Quick Start (Cheap/Free Hosting)
-
-**No VPS required. Works on any shared hosting with PHP.**
-
-1. Download `php-monitor.php` from the repo
-2. Upload to your hosting
-3. Sign up for [EasyCron](https://www.easycron.com/) (free tier)
-4. Add cron job: `https://your-hosting.com/php-monitor.php` every 30 seconds
-
-Done. Monitor runs automatically.
-
-**[Full setup guide →](DEPLOYMENT.md#setup-shared-hosting-and-easycron)**
-
-## Deployment Options
-
-| Setup | Cost | Effort | Best for |
-|-------|------|--------|----------|
-| **Shared hosting + EasyCron** | Free | 5 min | Everyone, simple |
-| **VPS + HTTP API** | $5/mo | 30 min | Self-hosted, always-on |
-| **Mac daemon** | Free | 5 min | Local development |
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for all options.
-
-## Installation
-
-### Homebrew (macOS)
+## Install (macOS)
 
 ```bash
 brew tap Comradery64/limitless-codex https://github.com/Comradery64/limitless-codex
@@ -53,11 +12,66 @@ brew install --HEAD limitless-codex
 limitless-codex setup
 ```
 
-Setup is a short guided window: it checks your Codex sign-in, turns on notifications, and starts the background monitor. When a step needs a System Settings change, it opens the exact pane and a guide beside it points to the switch.
+`setup` opens a short guided window that walks you through:
 
-The app builds from source on your Mac and is signed locally. No Apple Developer account is involved, and Gatekeeper doesn't block it.
+1. **Codex:** confirms you're signed in, or signs you in.
+2. **Notifications:** asks macOS for permission, so you hear about every reset.
+3. **Background monitor:** starts it now and every time you log in.
+4. **Test:** sends one notification to make sure it reaches you.
 
-To uninstall:
+If a step needs a System Settings change, a button opens the exact pane, and a guide beside it points at the switch.
+
+## How it works
+
+1. Every 30 seconds, it asks Codex for your weekly usage and your available reset credits.
+2. When usage reaches 99%, it spends one reset credit, and your limit starts over at 0%.
+3. You get a notification: *"Usage hit 99%, rate limit reset (1 credit left)."*
+4. It waits 5 minutes, then goes back to watching.
+
+It only spends credits your plan already gives you. It can't create more. With no credits left, it notifies you once, and Codex stops at the limit as usual.
+
+It talks to Codex through your own Codex CLI and sign-in. No passwords or keys are stored, and nothing is sent anywhere else.
+
+## Notifications
+
+| When | Message |
+|------|---------|
+| A reset worked | Usage hit 99%, rate limit reset (N credits left) |
+| A reset failed | Reset failed at 99% usage: *error* |
+| No credits left | Usage at 99% and no reset credits left |
+
+## Settings
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `THRESHOLD` | `99` | Usage percent that triggers a reset |
+| `CODEX_BIN` | found on your `PATH` | Path to the `codex` CLI |
+
+To change the threshold, edit the monitor's settings file and restart it:
+
+```bash
+PLIST=~/Library/LaunchAgents/io.github.comradery64.limitless-codex.plist
+/usr/libexec/PlistBuddy -c "Set :EnvironmentVariables:THRESHOLD 98" $PLIST
+launchctl bootout gui/$(id -u)/io.github.comradery64.limitless-codex; launchctl bootstrap gui/$(id -u) $PLIST
+```
+
+## Check on it
+
+```bash
+tail -f ~/Library/Logs/limitless-codex.log    # live log
+limitless-codex --mode=status                 # usage right now, as JSON
+limitless-codex setup                         # status window
+```
+
+The monitor uses about 39 MB of memory: about 7 MB for itself, plus the Codex connection it keeps open. Its CPU use is negligible.
+
+## Troubleshooting
+
+- **No notifications:** run `limitless-codex setup` and send a test from the Test step. If it doesn't appear, a Focus mode is probably hiding it, and setup shows you how to allow it.
+- **"No rate limit data" in the log:** your Codex sign-in has expired. Run `codex login`.
+- **A single `Error:` line in the log:** usually a brief network blip. The monitor retries every 30 seconds.
+
+## Uninstall
 
 ```bash
 launchctl bootout gui/$(id -u)/io.github.comradery64.limitless-codex
@@ -65,97 +79,20 @@ rm ~/Library/LaunchAgents/io.github.comradery64.limitless-codex.plist
 brew uninstall limitless-codex
 ```
 
-### From source
+## Other ways to run it
 
-```bash
-git clone https://github.com/Comradery64/limitless-codex
-cd limitless-codex
-make install-app      # macOS app in ~/Applications, CLI in ~/.local/bin
-limitless-codex setup
-```
+- **From source (macOS):** `make install-app && limitless-codex setup`
+- **Linux or a server:** `make build && make install`, then `limitless-codex --mode=daemon`
+- **Shared hosting with no always-on machine:** HTTP mode plus `php-monitor.php` on a free cron service
 
-`make build && make install` builds only the CLI, for Linux or servers.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for server and hosting setups.
 
-### Download binary
+## Build notes
 
-Get the latest binary for your OS from [releases](https://github.com/Comradery64/limitless-codex/releases).
-
-## Configuration
-
-Environment variables:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CODEX_BIN` | `~/.local/bin/codex` | Path to codex CLI |
-| `THRESHOLD` | `99` | Reset threshold (%) |
-| `POLL_INTERVAL_MS` | `30000` | Check interval (ms) |
-| `CODEX_MONITOR_URL` | (for PHP) | Your VPS endpoint |
-
-## System impact
-
-| Metric | Value |
-|--------|-------|
-| Memory | 2.4 MB |
-| CPU | 0.0% |
-| Processes | 1 (long-lived) |
-| Log volume | 10-50 lines/day |
-| Cost | Free (or $5/mo VPS) |
-
-## How it works
-
-1. Monitor polls Codex usage every 30 seconds
-2. When usage hits 99%, automatically triggers a reset
-3. Logs all actions (audit trail)
-4. Waits 5 minutes before next reset (prevents spam)
-
-## Examples
-
-**Local monitoring (macOS/Linux):**
-```bash
-limitless-codex --mode=daemon
-# Runs in background, check logs with: tail -f ~/Library/Logs/limitless-codex.log
-```
-
-**Remote HTTP API:**
-```bash
-limitless-codex --mode=http --listen=0.0.0.0:8080
-# Call: curl https://your-vps:8080/check-and-reset
-```
-
-**Shared hosting:**
-- Upload `php-monitor.php`
-- Set `CODEX_MONITOR_URL` env var
-- Use EasyCron or similar free cron service
-
-## Security (SOC 2 Type II)
-
-- No credentials stored in code
-- TLS for all communication
-- Audit log of all resets (timestamp, usage, outcome)
-- Never logs sensitive values
-- Least privilege (read limits, write resets only)
-
-[Security details →](DEPLOYMENT.md#security-soc-2-type-ii)
-
-## Troubleshooting
-
-**"Monitor unreachable" in PHP:**
-- Check your VPS is running: `ps aux | grep limitless-codex`
-- Check firewall allows port 8080
-- Test manually: `curl https://your-vps:8080/health`
-
-**"No rate limit data":**
-- Codex credentials expired
-- Verify: `codex --version`
-- Re-authenticate: `codex login`
-
-**Other issues:**
-- Check logs: VPS → `/var/log/limitless-codex.log`, Shared hosting → `logs/limitless-codex.log`
+The macOS app builds from source on your Mac with Command Line Tools and is signed locally. No Apple Developer account is involved, and Gatekeeper doesn't block it.
 
 ## License
 
-MIT
+MIT. Issues and PRs welcome at https://github.com/Comradery64/limitless-codex.
 
-## Contributing
-
-Issues and PRs welcome at https://github.com/Comradery64/limitless-codex
+> **For Claude Code sessions:** read [NEXT-SESSION.md](NEXT-SESSION.md) for project status and [TODO.md](TODO.md) for remaining work.
