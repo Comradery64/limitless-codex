@@ -98,9 +98,9 @@ type ClientInfo struct {
 }
 
 type RateLimitInfo struct {
-	UsedPercent       int `json:"usedPercent"`
-	WindowDurationMins int `json:"windowDurationMins"`
-	ResetsAt          int64 `json:"resetsAt"`
+	UsedPercent        int   `json:"usedPercent"`
+	WindowDurationMins int   `json:"windowDurationMins"`
+	ResetsAt           int64 `json:"resetsAt"`
 }
 
 type RateLimitData struct {
@@ -115,13 +115,13 @@ type RateLimitResetCredit struct {
 }
 
 type RateLimitResetCredits struct {
-	AvailableCount int                        `json:"availableCount"`
+	AvailableCount int                    `json:"availableCount"`
 	Credits        []RateLimitResetCredit `json:"credits"`
 }
 
 type RateLimitsResponse struct {
-	RateLimits             *RateLimitData          `json:"rateLimits"`
-	RateLimitResetCredits  *RateLimitResetCredits `json:"rateLimitResetCredits"`
+	RateLimits            *RateLimitData         `json:"rateLimits"`
+	RateLimitResetCredits *RateLimitResetCredits `json:"rateLimitResetCredits"`
 }
 
 type ConsumeResult struct {
@@ -239,7 +239,7 @@ func (c *CodexClient) CheckUsage() (*RateLimitsResponse, error) {
 
 func (c *CodexClient) TriggerReset(creditID string) (string, error) {
 	params := map[string]string{
-		"creditId":      creditID,
+		"creditId":       creditID,
 		"idempotencyKey": creditID,
 	}
 
