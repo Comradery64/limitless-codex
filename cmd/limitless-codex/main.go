@@ -6,14 +6,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -264,82 +262,6 @@ func (c *CodexClient) Close() {
 }
 
 var globalClient *CodexClient
-var globalMutex sync.Mutex
-
-type CheckResponse struct {
-	Status     string `json:"status"`
-	UsedPercent int    `json:"usedPercent"`
-	ResetsIn   int    `json:"resetsInMin"`
-	Credits    int    `json:"availableCredits"`
-	ResetDone  bool   `json:"resetTriggered,omitempty"`
-	Error      string `json:"error,omitempty"`
-	Timestamp  string `json:"timestamp"`
-}
-
-func handleCheck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if r.Method != http.MethodPost && r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(CheckResponse{Status: "error", Error: "method not allowed", Timestamp: time.Now().Format(time.RFC3339)})
-		return
-	}
-
-	globalMutex.Lock()
-	defer globalMutex.Unlock()
-
-	usage, err := globalClient.CheckUsage()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(CheckResponse{Status: "error", Error: err.Error(), Timestamp: time.Now().Format(time.RFC3339)})
-		return
-	}
-
-	if usage.RateLimits == nil || usage.RateLimits.Primary == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(CheckResponse{Status: "error", Error: "no rate limit data", Timestamp: time.Now().Format(time.RFC3339)})
-		return
-	}
-
-	usedPercent := usage.RateLimits.Primary.UsedPercent
-	resetsAt := time.Unix(usage.RateLimits.Primary.ResetsAt, 0)
-	resetsIn := int(time.Until(resetsAt).Minutes())
-	creditsAvailable := 0
-	if usage.RateLimitResetCredits != nil {
-		creditsAvailable = len(usage.RateLimitResetCredits.Credits)
-	}
-
-	resp := CheckResponse{
-		Status:      "ok",
-		UsedPercent: usedPercent,
-		ResetsIn:    resetsIn,
-		Credits:     creditsAvailable,
-		Timestamp:   time.Now().Format(time.RFC3339),
-	}
-
-	// Trigger reset if threshold reached
-	if float64(usedPercent) >= thresholdPercent && creditsAvailable > 0 {
-		creditToUse := usage.RateLimitResetCredits.Credits[0]
-		outcome, err := globalClient.TriggerReset(creditToUse.ID)
-		if err != nil {
-			resp.Status = "reset_failed"
-			resp.Error = err.Error()
-			fmt.Printf("[%s] ❌ Reset failed: %v\n", time.Now().Format(time.RFC3339), err)
-		} else {
-			resp.Status = "reset_triggered"
-			resp.ResetDone = true
-			fmt.Printf("[%s] ✅ Reset triggered via HTTP: %s\n", time.Now().Format(time.RFC3339), outcome)
-		}
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
-}
-
-func handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "healthy", "timestamp": time.Now().Format(time.RFC3339)})
-}
 
 // uninstall stops the background monitor and removes the LaunchAgent that setup
 // wrote. Homebrew can't run code on uninstall, so this runs first.
@@ -378,9 +300,12 @@ func main() {
 		return
 	}
 
-	mode := flag.String("mode", "daemon", "daemon, http, or status (print usage as JSON once)")
-	listen := flag.String("listen", "127.0.0.1:8080", "HTTP listen address (http mode only)")
+	mode := flag.String("mode", "daemon", "daemon or status (print usage as JSON once)")
 	flag.Parse()
+	if *mode != "daemon" && *mode != "status" {
+		fmt.Fprintf(os.Stderr, "unknown mode %q (use daemon or status)\n", *mode)
+		os.Exit(2)
+	}
 
 	var err error
 	globalClient, err = NewCodexClient()
@@ -411,17 +336,6 @@ func main() {
 			"credits":     credits,
 			"threshold":   thresholdPercent,
 		})
-		return
-	}
-
-	if *mode == "http" {
-		fmt.Printf("[%s] HTTP API mode, listening on %s\n", time.Now().Format(time.RFC3339), *listen)
-		http.HandleFunc("/health", handleHealth)
-		http.HandleFunc("/check-and-reset", handleCheck)
-		if err := http.ListenAndServe(*listen, nil); err != nil {
-			fmt.Fprintf(os.Stderr, "HTTP server error: %v\n", err)
-			os.Exit(1)
-		}
 		return
 	}
 

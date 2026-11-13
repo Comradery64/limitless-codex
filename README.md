@@ -87,7 +87,7 @@ brew uninstall limitless-codex
 
 **On a Linux server:** install the `codex` CLI, sign in with `codex login --device-auth`, then run limitless-codex as a systemd service. Full steps are in [DEPLOYMENT.md](DEPLOYMENT.md#linux-server-systemd). It logs resets instead of sending notifications.
 
-**Shared hosting (cPanel): planned.** Not possible yet: only the `codex` CLI can spend reset credits, and it can't run on shared hosting. See [why](DEPLOYMENT.md#shared-hosting-cpanel-planned).
+**No hosted option, by design.** Your Codex sign-in never leaves your machine, so there is no shared-hosting, serverless or relay version. See [why](DEPLOYMENT.md#no-hosted-or-network-options).
 
 ## Build notes
 

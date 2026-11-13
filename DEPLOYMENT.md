@@ -63,26 +63,9 @@ journalctl -u limitless-codex -f
 
 Linux has no desktop notifications for this. Resets, failures, and "no credits left" all appear in the log.
 
-## HTTP mode (local integrations only)
+## No hosted or network options
 
-```bash
-limitless-codex --mode=http --listen=127.0.0.1:8080
-```
-
-- `GET /health`: health check
-- `GET` or `POST /check-and-reset`: reads usage and resets if it's at the threshold
-
-```json
-{ "status": "ok", "usedPercent": 63, "resetsInMin": 8109, "availableCredits": 2, "timestamp": "2026-09-28T03:51:50Z" }
-```
-
-HTTP mode has **no authentication and no TLS**. Keep it on `127.0.0.1`. To reach it from another machine, use an SSH tunnel or a private network such as Tailscale. Never put it on a public port.
-
-## Shared hosting (cPanel): planned
-
-This isn't possible yet. Only the `codex` CLI can read usage and spend reset credits, and it can't run on typical shared hosting. A cPanel-only version would have PHP call ChatGPT's usage endpoints directly with your Codex sign-in token, scheduled by cPanel's built-in Cron Jobs. That approach is still being evaluated, because those endpoints aren't documented and the token would be stored on shared hosting.
-
-`php-monitor.php` is the starting point for that work. Today it only forwards to a machine running HTTP mode.
+Codex credentials stay on a machine you control. limitless-codex has no network listener, and there is no shared-hosting, serverless or relay option: each would need your Codex token stored on someone else's infrastructure or an unauthenticated endpoint that can spend credits.
 
 ## Security
 
